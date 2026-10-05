@@ -3,6 +3,7 @@ from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.caso import CasoOut
 from app.models.enums import EstadoVerificacion, OrigenPersona, TipoDocumento
 
 
@@ -27,3 +28,8 @@ class PersonaOut(PersonaBase):
     estado_verificacion: EstadoVerificacion
     creado_en: datetime
     actualizado_en: datetime
+
+
+class PersonaConCasosOut(BaseModel):
+    persona: PersonaOut | None
+    casos: list[CasoOut]
