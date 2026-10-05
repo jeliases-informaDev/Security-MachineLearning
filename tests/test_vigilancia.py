@@ -58,6 +58,11 @@ class TestFiltrosDeVigilancia(unittest.TestCase):
         self.assertTrue(tiene_tema_judicial("Dictan prisión preventiva"))
         self.assertTrue(tiene_tema_judicial("Condenan a 14 años de cárcel"))
         self.assertFalse(tiene_tema_judicial("Boluarte inaugura puente en Arequipa"))
+        # Casos reales de la primera versión: ceses y designaciones no son casos legales.
+        self.assertFalse(tiene_tema_judicial("JNJ dispone cese de Zoraida Ávalos como fiscal suprema por límite de edad"))
+        self.assertFalse(tiene_tema_judicial("Dan por concluida designación de Zoraida Ávalos en la Primera Fiscalía Suprema Penal"))
+        self.assertTrue(tiene_tema_judicial("JNJ destituye a juez por faltas disciplinarias"))
+        self.assertTrue(tiene_tema_judicial("Fiscalía formaliza investigación contra el gobernador"))
         self.assertFalse(tiene_tema_judicial("Encuesta: así va la intención de voto"))
 
     def test_menciona_a_acepta_nombre_o_primer_apellido(self):

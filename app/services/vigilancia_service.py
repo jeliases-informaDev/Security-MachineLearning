@@ -44,13 +44,16 @@ from app.scraper.google_news import (
 from app.services.articulos_service import guardar_articulo_si_nuevo
 from app.services.casos_service import procesar_mencion
 
-# Raíces (sin tildes) de palabras que delatan un tema judicial o fiscal en un titular.
-# Es un filtro barato para no gastar al modelo en noticias que claramente no lo son.
+# Raíces (sin tildes) de palabras que delatan una acción judicial, fiscal o disciplinaria en un
+# titular. Es un filtro barato para no gastar al modelo en noticias que claramente no lo son.
+# A propósito NO incluye "fiscal", "juez", "tribunal" ni "poder judicial" a secas: suelen ser el
+# cargo o la institución de la persona ("cese de Zoraida Ávalos como fiscal suprema"), no un caso.
 RAICES_JUDICIALES = (
-    "investig", "denunci", "fiscal", "acusa", "sentenc", "conden", "juicio", "prision", "preventiv",
-    "lavado", "corrupci", "colusi", "cohecho", "peculado", "organizacion criminal", "impedimento de salida",
-    "extradic", "absuel", "archiv", "imput", "procesad", "detenc", "captura", "delito", "proceso penal",
-    "audiencia", "colaboracion eficaz", "pena", "culpable", "poder judicial", "tribunal", "juez",
+    "investig", "denunci", "querella", "acusa", "sentenc", "conden", "juicio", "prision", "preventiv",
+    "carcel", "lavado", "corrupci", "colusi", "cohecho", "peculado", "organizacion criminal",
+    "impedimento de salida", "extradic", "absuel", "archiv", "imput", "procesad", "detenc", "captura",
+    "delito", "proceso penal", "audiencia", "colaboracion eficaz", "culpable", "formaliz", "allana",
+    "destituc", "destituy", "inhabilit", "sancion", "disciplinari",
 )
 
 LIMITE_DESCRIPCION = 600
