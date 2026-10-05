@@ -19,6 +19,15 @@ class Settings(BaseSettings):
     # Permite apagar a Indira (responde 503) si todavía no hay un modelo disponible.
     INDIRA_ENABLED: bool = True
 
+    # Vigilancia diaria de prensa (ver app/services/vigilancia_service.py).
+    ZONA_HORARIA: str = "America/Lima"
+    SCRAPING_HORA: int = 6
+    # Si el servicio se enciende y la última corrida fue hace más de 20 h, corre una al arrancar.
+    # Sin esto, un servicio que no está siempre encendido se saltaría días enteros.
+    SCRAPING_AL_ARRANCAR: bool = True
+    VIGILANCIA_DIAS: int = 30
+    VIGILANCIA_MAX_POR_PERSONA: int = 6
+
     # Modelo local autohospedado para el agente Indira (ver docs/ARQUITECTURA.md)
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.1:8b"

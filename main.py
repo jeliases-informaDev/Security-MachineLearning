@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.api.indira import router as indira_router
 from app.api.personas import router as personas_router
 from app.api.tickets import router as tickets_router
+from app.api.vigilancia import router as vigilancia_router
 from app.core.config import settings
 from app.core.security import verificar_clave_interna
 from app.services.scheduler_service import detener_scheduler, iniciar_scheduler
@@ -51,6 +52,7 @@ rutas_internas = [Depends(verificar_clave_interna)]
 app.include_router(personas_router, dependencies=rutas_internas)
 app.include_router(tickets_router, dependencies=rutas_internas)
 app.include_router(indira_router, dependencies=rutas_internas)
+app.include_router(vigilancia_router, dependencies=rutas_internas)
 
 # Página de prueba del chat: solo en desarrollo, porque no envía la clave interna.
 if settings.ENTORNO == "dev":
