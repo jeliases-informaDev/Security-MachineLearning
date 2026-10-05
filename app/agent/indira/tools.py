@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.ml_engine.matching import buscar_persona_por_texto
 from app.models.caso import Caso
-from app.models.enums import CanalTicket, CreadoPorTicket, EstadoTicket, PrioridadTicket, TipoTicket
+from app.models.enums import CanalTicket, CreadoPorTicket, EstadoRevision, EstadoTicket, PrioridadTicket, TipoTicket
 from app.models.ticket import MensajeTicket, Ticket
 
 # Definición de herramientas en formato OpenAI/Ollama tool-calling.
@@ -66,7 +66,10 @@ def consultar_persona(db: Session, nombre_o_documento: str) -> dict:
 
     # Los más recientes primero y con un tope: más de eso satura el contexto del modelo.
     casos = db.scalars(
-        select(Caso).where(Caso.persona_id == persona.id).order_by(Caso.creado_en.desc()).limit(MAX_CASOS_EN_RESPUESTA)
+        select(Caso)
+        .where(Caso.persona_id == persona.id, Caso.estado_revision != EstadoRevision.DESCARTADO)
+        .order_by(Caso.creado_en.desc())
+        .limit(MAX_CASOS_EN_RESPUESTA)
     ).all()
 
     return {
