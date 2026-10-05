@@ -195,10 +195,36 @@ Pendiente decidir: motor de vector store para el RAG de Indira (pgvector sobre e
 
 ---
 
+## 3.5 Vigilancia diaria de prensa
+
+Los casos de prensa (acusaciones, denuncias, investigaciones, sentencias) los genera **solo este servicio**; el backend Kotlin no los carga ni los scrapea, únicamente los consulta.
+
+```
+Persona (lista de vigilancia)
+   │  una consulta por persona: "Nombre Apellido" + términos judiciales, últimos N días
+   ▼
+Google Noticias (RSS)  ──►  se descartan medios que no son diarios nacionales reconocidos
+   │                        (lista en app/scraper/google_news.py) y titulares sin tema judicial
+   ▼
+enlace directo al diario   (si no se puede resolver, la noticia se descarta: nunca se guarda un enlace indirecto)
+   ▼
+modelo local (Ollama)      ¿la persona es el SUJETO del caso? ¿qué tipo? → resumen de una oración
+   ▼
+Caso  (estado_revision = pendiente, score 0.6, url_fuente = nota original)
+```
+
+- **Quién se vigila:** todas las `Persona` no descartadas. Para sumar a alguien se agrega a `scripts/seed_vigilancia_politica.py` (solo nombres: ningún caso se escribe a mano).
+- **Cuándo corre:** a diario a las `SCRAPING_HORA` (6:00, hora de Lima) dentro del servicio, y también al encenderlo si la última corrida fue hace más de 20 h (`SCRAPING_AL_ARRANCAR`). El servicio tiene que estar encendido para que corra; si no hay corrida programada, el siguiente arranque la recupera.
+- **Bajo demanda:** `POST /api/v1/vigilancia/ejecutar` (202, sigue en segundo plano), `GET /api/v1/vigilancia/estado`, o `python -m scripts.ejecutar_vigilancia [--dias 60] [--max 10] [--persona Cerrón]`.
+- **Garantías:** nada se publica solo (todo queda pendiente de revisión humana); cada caso apunta a su nota original; el modelo solo ve el titular y el resumen de la nota, y si afirma un tipo fuerte (sentencia, absolución, acusación) sin evidencia en el texto se degrada a "investigación"; una noticia en la que la persona solo opina, denuncia o es el juez/fiscal no cuenta como caso suyo.
+- **Límites conocidos:** el modelo local puede equivocarse (por eso la revisión humana), solo se ve lo que cubren los diarios en la ventana de búsqueda, y los homónimos son un riesgo mientras no haya un documento que desambigüe.
+
+---
+
 ## 4. Pendientes / decisiones abiertas
 
 - [ ] Confirmar specs del servidor de despliegue (RAM/GPU disponible) para elegir el tamaño exacto del modelo local.
 - [ ] Taxonomía cerrada de `categoria_delito` (¿la define compliance o se infiere libremente del ML?).
-- [ ] Lista inicial de diarios (`Fuente`) a scrapear.
+- [x] Lista inicial de diarios (`Fuente`) a scrapear: ver `DOMINIOS_RECONOCIDOS` en `app/scraper/google_news.py`.
 - [ ] Umbral de `score_confianza` para auto-publicar un `Caso` vs. requerir revisión humana.
 - [ ] Confirmar nombre del producto: README dice "Security", `main.py` dice "ComplyTools".

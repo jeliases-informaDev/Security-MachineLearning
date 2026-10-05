@@ -56,12 +56,18 @@ DEFINICIONES_HERRAMIENTAS = [
 ]
 
 
+MAX_CASOS_EN_RESPUESTA = 8
+
+
 def consultar_persona(db: Session, nombre_o_documento: str) -> dict:
     persona = buscar_persona_por_texto(db, nombre_o_documento)
     if persona is None:
         return {"encontrado": False, "mensaje": "No se encontró ninguna persona que coincida con esa búsqueda."}
 
-    casos = db.scalars(select(Caso).where(Caso.persona_id == persona.id).order_by(Caso.creado_en.desc())).all()
+    # Los más recientes primero y con un tope: más de eso satura el contexto del modelo.
+    casos = db.scalars(
+        select(Caso).where(Caso.persona_id == persona.id).order_by(Caso.creado_en.desc()).limit(MAX_CASOS_EN_RESPUESTA)
+    ).all()
 
     return {
         "encontrado": True,
@@ -79,6 +85,8 @@ def consultar_persona(db: Session, nombre_o_documento: str) -> dict:
                 "categoria_delito": caso.categoria_delito,
                 "resumen": caso.resumen,
                 "url_fuente": caso.url_fuente,
+                "diario": caso.articulo.fuente.nombre,
+                "fecha_publicacion": caso.articulo.fecha_publicacion.isoformat() if caso.articulo.fecha_publicacion else None,
                 "estado_revision": caso.estado_revision.value,
             }
             for caso in casos
