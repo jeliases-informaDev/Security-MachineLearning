@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Indira - Chat de prueba</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161a20;
+    --border: #262b33;
+    --text: #e6e8eb;
+    --muted: #8b929e;
+    --accent: #4f8cff;
+    --user-bubble: #4f8cff;
+    --assistant-bubble: #20242c;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  header h1 { font-size: 16px; margin: 0; }
+  header .sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  #nueva { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 12px; }
+  #nueva:hover { color: var(--text); border-color: var(--accent); }
+
+  #mensajes {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .burbuja { max-width: 70%; padding: 10px 14px; border-radius: 12px; line-height: 1.4; font-size: 14px; white-space: pre-wrap; }
+  .usuario { align-self: flex-end; background: var(--user-bubble); color: white; border-bottom-right-radius: 2px; }
+  .asistente { align-self: flex-start; background: var(--assistant-bubble); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
+  .cargando { align-self: flex-start; color: var(--muted); font-size: 13px; padding: 0 14px; }
+  .error { align-self: flex-start; color: #ff6b6b; font-size: 13px; padding: 0 14px; }
+
+  .feedback { align-self: flex-start; display: flex; gap: 6px; margin-top: -6px; }
+  .feedback button {
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+    border-radius: 6px; padding: 2px 8px; font-size: 12px; cursor: pointer;
+  }
+  .feedback button:hover { border-color: var(--accent); color: var(--text); }
+  .feedback button.activo-positivo { background: #1f7a3f; color: white; border-color: #1f7a3f; }
+  .feedback button.activo-negativo { background: #7a1f1f; color: white; border-color: #7a1f1f; }
+  .feedback .gracias { font-size: 12px; color: var(--muted); }
+
+  footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+  }
+  #entrada {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 12px 14px;
+    font-size: 14px;
+    resize: none;
+    outline: none;
+  }
+  #entrada:focus { border-color: var(--accent); }
+  #enviar {
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0 20px;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  #enviar:disabled { opacity: 0.5; cursor: not-allowed; }
+</style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Indira</h1>
+      <div class="sub" id="conv-info">nueva conversación</div>
+    </div>
+    <button id="nueva">Nueva conversación</button>
+  </header>
+
+  <div id="mensajes"></div>
+
+  <footer>
+    <textarea id="entrada" rows="1" placeholder="Escribe un mensaje..."></textarea>
+    <button id="enviar">Enviar</button>
+  </footer>
+
+<script>
+  const API_URL = "/api/v1/indira/chat";
+  const mensajesEl = document.getElementById("mensajes");
+  const entradaEl = document.getElementById("entrada");
+  const enviarEl = document.getElementById("enviar");
+  const nuevaEl = document.getElementById("nueva");
+  const convInfoEl = document.getElementById("conv-info");
+
+  let usuarioId = localStorage.getItem("indira_usuario_id");
+  if (!usuarioId) {
+    usuarioId = crypto.randomUUID();
+    localStorage.setItem("indira_usuario_id", usuarioId);
+  }
+  let conversacionId = null;
+
+  function agregarBurbuja(texto, clase) {
+    const div = document.createElement("div");
+    div.className = "burbuja " + clase;
+    div.textContent = texto;
+    mensajesEl.appendChild(div);
+    mensajesEl.scrollTop = mensajesEl.scrollHeight;
+    return div;
+  }
+
+  function agregarFeedback(mensajeId) {
+    const cont = document.createElement("div");
+    cont.className = "feedback";
+
+    const btnUtil = document.createElement("button");
+    btnUtil.textContent = "👍 Util";
+    const btnNoUtil = document.createElement("button");
+    btnNoUtil.textContent = "👎 No util";
+
+    async function enviarFeedback(valor, boton, otroBoton) {
+      boton.disabled = true;
+      otroBoton.disabled = true;
+      try {
+        await fetch(`/api/v1/indira/mensajes/${mensajeId}/feedback`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ feedback: valor }),
+        });
+        boton.classList.add(valor === "positivo" ? "activo-positivo" : "activo-negativo");
+        const gracias = document.createElement("span");
+        gracias.className = "gracias";
+        gracias.textContent = "¡Gracias por tu feedback!";
+        cont.appendChild(gracias);
+      } catch (e) {
+        boton.disabled = false;
+        otroBoton.disabled = false;
+      }
+    }
+
+    btnUtil.addEventListener("click", () => enviarFeedback("positivo", btnUtil, btnNoUtil));
+    btnNoUtil.addEventListener("click", () => enviarFeedback("negativo", btnNoUtil, btnUtil));
+
+    cont.appendChild(btnUtil);
+    cont.appendChild(btnNoUtil);
+    mensajesEl.appendChild(cont);
+    mensajesEl.scrollTop = mensajesEl.scrollHeight;
+  }
+
+  function nuevaConversacion() {
+    conversacionId = null;
+    mensajesEl.innerHTML = "";
+    convInfoEl.textContent = "nueva conversación";
+    agregarBurbuja("Hola, soy Indira. ¿En qué puedo ayudarte?", "asistente");
+  }
+
+  async function enviarMensaje() {
+    const texto = entradaEl.value.trim();
+    if (!texto) return;
+
+    agregarBurbuja(texto, "usuario");
+    entradaEl.value = "";
+    enviarEl.disabled = true;
+
+    const cargandoEl = document.createElement("div");
+    cargandoEl.className = "cargando";
+    cargandoEl.textContent = "Indira está escribiendo...";
+    mensajesEl.appendChild(cargandoEl);
+    mensajesEl.scrollTop = mensajesEl.scrollHeight;
+
+    try {
+      const resp = await fetch(API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          usuario_id: usuarioId,
+          canal: "web",
+          mensaje: texto,
+          conversacion_id: conversacionId,
+        }),
+      });
+
+      cargandoEl.remove();
+
+      if (!resp.ok) {
+        const detalle = await resp.text();
+        agregarBurbuja("Error " + resp.status + ": " + detalle, "error");
+        return;
+      }
+
+      const data = await resp.json();
+      conversacionId = data.conversacion_id;
+      convInfoEl.textContent = "conversación: " + conversacionId;
+      agregarBurbuja(data.respuesta, "asistente");
+      agregarFeedback(data.mensaje_id);
+    } catch (e) {
+      cargandoEl.remove();
+      agregarBurbuja("No se pudo conectar con la API: " + e.message, "error");
+    } finally {
+      enviarEl.disabled = false;
+      entradaEl.focus();
+    }
+  }
+
+  enviarEl.addEventListener("click", enviarMensaje);
+  entradaEl.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      enviarMensaje();
+    }
+  });
+  nuevaEl.addEventListener("click", nuevaConversacion);
+
+  nuevaConversacion();
+</script>
+</body>
+</html>

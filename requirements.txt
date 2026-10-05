@@ -4,3 +4,10 @@ scikit-learn
 pandas
 beautifulsoup4
 requests
+sqlalchemy
+alembic
+psycopg[binary]
+pydantic-settings
+rapidfuzz
+apscheduler
+ollama
