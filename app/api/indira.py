@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.agent.indira.feedback_service import registrar_feedback
 from app.agent.indira.service import enviar_mensaje
+from app.core.config import settings
 from app.core.database import get_db
 from app.schemas.indira import FeedbackRequest, IndiraChatRequest, IndiraChatResponse
 
@@ -13,6 +14,9 @@ router = APIRouter(prefix="/api/v1/indira", tags=["indira"])
 
 @router.post("/chat", response_model=IndiraChatResponse)
 def chat(payload: IndiraChatRequest, db: Session = Depends(get_db)):
+    if not settings.INDIRA_ENABLED:
+        raise HTTPException(status_code=503, detail="Indira no está disponible por el momento")
+
     conversacion, mensaje = enviar_mensaje(
         db,
         usuario_id=payload.usuario_id,
