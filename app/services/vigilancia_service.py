@@ -23,7 +23,7 @@ from app.ml_engine.deteccion_casos import (
     SCORE_CONFIANZA_AUTOMATICA,
     ModeloNoDisponible,
     detectar_caso_en_texto,
-    es_solo_denunciante,
+    motivo_de_descarte,
 )
 from app.ml_engine.nombres import menciona_persona, nombre_para_busqueda, normalizar
 from app.models.articulo import ArticuloRaw
@@ -152,7 +152,6 @@ def vigilar_persona(
     resultado.candidatas += len(candidatas)
     log(f"  {nombre}: {len(noticias)} noticias, {len(candidatas)} candidatas")
 
-    nombre_completo = f"{persona.nombres} {persona.apellidos}"
     for noticia in candidatas:
         articulo = _articulo_conocido(db, noticia)
 
@@ -178,14 +177,11 @@ def vigilar_persona(
 
         # Con el resumen de la nota ya a la vista: tiene que hablar de ESTA persona (no de un
         # homónimo que comparte apellido) y no mostrarla como quien denuncia en vez de la denunciada.
-        texto_nota = f"{articulo.titulo} {articulo.contenido_texto}"
-        if not menciona_persona(articulo.titulo, articulo.contenido_texto, persona) or es_solo_denunciante(
-            texto_nota, persona
-        ):
+        if motivo_de_descarte(articulo.titulo, articulo.contenido_texto, persona):
             continue
 
         # Si el modelo no responde, el artículo queda sin procesar y se reintenta en la próxima corrida.
-        deteccion = detectar_caso_en_texto(nombre_completo, articulo.titulo, articulo.contenido_texto, lanzar_si_falla=True)
+        deteccion = detectar_caso_en_texto(persona, articulo.titulo, articulo.contenido_texto, lanzar_si_falla=True)
         if deteccion is None:
             articulo.procesado = True
             db.add(articulo)

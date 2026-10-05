@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.ml_engine.matching import buscar_persona_por_texto
 from app.models.caso import Caso
+from app.models.enums import EstadoRevision
 from app.models.persona import Persona
 from app.schemas.caso import CasoOut
 from app.schemas.persona import PersonaConCasosOut, PersonaOut
@@ -22,7 +23,9 @@ def buscar_persona(q: str = Query(min_length=3, description="Nombre o número de
         return PersonaConCasosOut(persona=None, casos=[])
 
     casos = db.scalars(
-        select(Caso).where(Caso.persona_id == persona.id).order_by(Caso.creado_en.desc())
+        select(Caso)
+        .where(Caso.persona_id == persona.id, Caso.estado_revision != EstadoRevision.DESCARTADO)
+        .order_by(Caso.creado_en.desc())
     ).all()
     return PersonaConCasosOut(persona=persona, casos=casos)
 
@@ -42,6 +45,8 @@ def listar_casos_de_persona(persona_id: uuid.UUID, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Persona no encontrada")
 
     casos = db.scalars(
-        select(Caso).where(Caso.persona_id == persona_id).order_by(Caso.creado_en.desc())
+        select(Caso)
+        .where(Caso.persona_id == persona_id, Caso.estado_revision != EstadoRevision.DESCARTADO)
+        .order_by(Caso.creado_en.desc())
     ).all()
     return casos

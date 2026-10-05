@@ -117,6 +117,12 @@ class TestAtribucionALaPersonaCorrecta(unittest.TestCase):
         self.assertTrue(es_solo_denunciante(querella, p))
         self.assertTrue(es_solo_denunciante("Acuña denuncia a Olivera ante la fiscalía", p))
 
+    def test_quien_presenta_la_denuncia_no_es_el_denunciado(self):
+        # Caso real: Mirtha Vásquez presenta la denuncia constitucional contra Josué Gutiérrez.
+        titulo = "Mirtha Vásquez presentó segunda denuncia constitucional contra Josué Gutiérrez y pidió inhabilitación"
+        self.assertTrue(es_solo_denunciante(titulo, persona("Mirtha", "Vásquez")))
+        self.assertFalse(es_solo_denunciante(titulo, persona("Josué", "Gutiérrez")))
+
     def test_el_denunciado_si_es_caso(self):
         p = persona("César", "Acuña")
         self.assertFalse(es_solo_denunciante("Fiscalía investiga a César Acuña por presunto plagio", p))
