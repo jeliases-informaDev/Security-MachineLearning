@@ -20,6 +20,7 @@ def procesar_mencion(
     resumen: str,
     score_confianza: float,
     numero_documento: str | None = None,
+    persona: Persona | None = None,
 ) -> Caso:
     """Punto de entrada del `services` layer: dado un articulo y una mención de persona
     ya extraída (nombres/apellidos/tipo/categoría), crea o vincula la Persona y el Caso.
@@ -27,7 +28,10 @@ def procesar_mencion(
     La extracción de la mención en sí (NER sobre el texto crudo) es un paso previo
     pendiente de implementar — ver "Taxonomía de categoria_delito" en docs/ARQUITECTURA.md.
     """
-    persona = buscar_persona_similar(db, nombres, apellidos, numero_documento)
+    # Si el llamador ya sabe de quién se trata (p. ej. la vigilancia busca por persona),
+    # no hace falta la búsqueda aproximada, que podría confundir a dos personas parecidas.
+    if persona is None:
+        persona = buscar_persona_similar(db, nombres, apellidos, numero_documento)
 
     if persona is None:
         persona = Persona(

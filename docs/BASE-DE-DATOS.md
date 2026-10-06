@@ -90,7 +90,6 @@ docker compose exec ml python -m scripts.ejecutar_vigilancia --persona Boluarte 
 - El paso 1 deja ~29 personas (la mayoría PEP). Con eso ya puedes consultar `personas`.
 - El paso 2 crea los `casos` (todos `PENDIENTE`). Sin Ollama no se generan casos. Quita `--persona` para recorrer a todos.
 - Una vez al día (6:00, hora de Lima) la vigilancia corre sola **si el servicio está encendido**. Con `SCRAPING_AL_ARRANCAR=true` también corre al encender si la última corrida fue hace más de 20 h (en el compose viene apagado).
-- Estos scripts viven en la rama `feature/vigilancia-prensa`; si tu rama no los trae, haz `git pull` de esa rama.
 - Alternativa de demostración: `scripts/seed_demo_personas.py` guarda noticias reales de varios diarios y crea figuras con casos solo donde la propia noticia reporta uno.
 
 **Consultar sin Docker ni base:** el ML expone `GET /api/v1/personas/buscar?q=Boluarte` (http://localhost:8000/docs). Pide el header `X-Internal-Key` (por defecto `dev-internal-key-change-me`). Desde la web solo llega por el chat de **Indira** (su herramienta `consultar_persona` lee estas tablas); el backend lo expone como `GET /api/ml/personas/buscar?q=…` (con JWT), pero ninguna pantalla lo usa todavía.

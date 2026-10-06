@@ -76,7 +76,7 @@ python -m uvicorn main:app --reload
 
 Si PowerShell bloquea el script del venv: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
-Pruebas: `python -m unittest discover -s tests` (las pruebas y los scripts de vigilancia llegan con la rama `feature/vigilancia-prensa`)
+Pruebas: `python -m unittest discover -s tests`
 
 ## ⚙️ Configuración (todo opcional)
 

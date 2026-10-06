@@ -3,6 +3,7 @@ import uuid
 
 from sqlalchemy.orm import Session
 
+from app.agent.indira.fuentes import agregar_fuentes
 from app.agent.indira.llm_client import PROMPT_SISTEMA, generar_respuesta
 from app.agent.indira.memoria import buscar_ejemplos_similares, construir_contexto_memoria
 from app.agent.indira.tools import DEFINICIONES_HERRAMIENTAS, ejecutar_herramienta
@@ -53,6 +54,7 @@ def enviar_mensaje(
     db.refresh(conversacion)
 
     mensajes_llm = _historial_para_llm(db, conversacion, contenido)
+    casos_consultados: list[dict] = []
 
     for _ in range(MAX_ITERACIONES_HERRAMIENTAS):
         mensaje_llm = generar_respuesta(mensajes_llm, herramientas=DEFINICIONES_HERRAMIENTAS)
@@ -61,7 +63,7 @@ def enviar_mensaje(
             mensaje_final = MensajeIndira(
                 conversacion_id=conversacion.id,
                 rol=RolMensaje.ASSISTANT,
-                contenido=mensaje_llm.content or "",
+                contenido=agregar_fuentes(mensaje_llm.content or "", casos_consultados),
             )
             db.add(mensaje_final)
             db.commit()
@@ -74,6 +76,8 @@ def enviar_mensaje(
             resultado = ejecutar_herramienta(
                 db, usuario_id, llamada.function.name, dict(llamada.function.arguments)
             )
+            if llamada.function.name == "consultar_persona" and resultado.get("encontrado"):
+                casos_consultados.extend(resultado.get("casos", []))
             mensajes_llm.append(
                 {"role": "tool", "content": json.dumps(resultado, ensure_ascii=False), "tool_name": llamada.function.name}
             )
