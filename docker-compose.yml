@@ -1,0 +1,86 @@
+# Security-MachineLearning: Postgres + microservicio de ML con un solo comando (no hace falta instalar Python ni Postgres).
+#
+#   docker compose up -d --build                 levanta Postgres + ML (http://localhost:8000/docs)
+#   docker compose up -d postgres                SOLO la base (para correr el ML con uvicorn en tu maquina)
+#   docker compose --profile ia up -d --build    ademas Ollama dentro de Docker y descarga el modelo de Indira (~5 GB)
+#   docker compose down                          apaga (los datos se conservan)
+#   docker compose down -v                       apaga y borra la base de datos local
+#
+# Indira (el agente) necesita Ollama. Por defecto el ML usa el Ollama instalado en TU maquina (puerto 11434).
+# Si no lo tienes, usa  --profile ia  (necesita ~8 GB de RAM libres) o pon INDIRA_ENABLED=false: el resto funciona igual.
+#
+# Los puertos y claves se pueden cambiar en un archivo ".env" (ver .env.example); no es obligatorio.
+# Este compose usa la misma clave interna por defecto que Security-Backend, asi que se conectan solos.
+
+name: security-ml
+
+services:
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: security_ml
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d security_ml"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  ml:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ENTORNO: dev
+      # El contenedor aplica las migraciones (alembic upgrade head) al arrancar.
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/security_ml
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY:-dev-internal-key-change-me}
+      INDIRA_ENABLED: ${INDIRA_ENABLED:-true}
+      # host.docker.internal = tu maquina: sirve tanto para un Ollama instalado como para el del perfil "ia" (publica el 11434).
+      OLLAMA_BASE_URL: http://host.docker.internal:${OLLAMA_PORT:-11434}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1:8b}
+      # En desarrollo no se corre la vigilancia de prensa al arrancar: consume mucha CPU/RAM.
+      SCRAPING_AL_ARRANCAR: ${SCRAPING_AL_ARRANCAR:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "${ML_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  # ---- Ollama dentro de Docker (opcional): docker compose --profile ia up -d --build ----
+
+  ollama:
+    profiles: ["ia"]
+    image: ollama/ollama
+    restart: unless-stopped
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+
+  ollama-pull:
+    profiles: ["ia"]
+    image: ollama/ollama
+    depends_on:
+      - ollama
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["sh", "-c", "until ollama list > /dev/null 2>&1; do sleep 2; done; ollama pull ${OLLAMA_MODEL:-llama3.1:8b}"]
+
+volumes:
+  postgres_data:
+  ollama_data:
