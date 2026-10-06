@@ -1,101 +1,105 @@
 # 🤖 Security - ML & Scraping Engine
 
-Este repositorio contiene el microservicio de **Inteligencia Artificial y Extracción de Datos** del ecosistema Security. Está construido con **Python y FastAPI**, y se encarga de ejecutar los algoritmos predictivos (Scoring de Riesgos) y las arañas de extracción (Web Scraping) para validar usuarios en listas negativas y listas PEP.
+Microservicio de **IA y extracción de datos** del ecosistema Security, hecho con **Python y FastAPI**. Hace tres cosas:
 
-Esta API es consumida de forma interna por el Backend principal de Kotlin.
+- **Personas y casos en prensa**: vigilancia diaria de diarios nacionales (Google Noticias) y clasificación con un modelo local.
+- **Indira**: agente IA (Ollama + `llama3.1:8b`) con tickets, memoria y feedback.
+- **Scoring de riesgo** de personas.
 
-## 🏗️ Arquitectura del Proyecto
+Lo consume **solo** el backend Kotlin (repositorio Security-Backend), con la clave interna `X-Internal-Key`. Detalle del diseño: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
 
-El proyecto está diseñado para ser altamente modular y separar las responsabilidades matemáticas de las funciones de red:
+- Puerto `8000` · Documentación interactiva: http://localhost:8000/docs · Salud: http://localhost:8000/api/v1/health
+- Base de datos propia: **Postgres** (`security_ml`), con migraciones **Alembic** (se aplican solas al arrancar en Docker).
 
 ```text
-security-machine-learning/
-├── app/
-│   ├── api/                 # Endpoints y controladores REST de FastAPI
-│   ├── core/                # Configuraciones globales (CORS, variables de entorno)
-│   ├── ml_engine/           # Motor de Machine Learning
-│   │   ├── models/          # Modelos entrenados (Scikit-Learn)
-│   │   └── preprocessing/   # Limpieza y transformación de datos (Pandas)
-│   ├── scraper/             # Arañas de extracción web (BeautifulSoup)
-│   │   ├── listas_pep/      
-│   │   └── sanciones/       
-│   └── services/            # Casos de uso y lógica de orquestación
-├── venv/                    # Entorno virtual aislado (Ignorado en Git)
-├── .gitignore
-├── main.py                  # Punto de entrada del servidor Uvicorn
-└── requirements.txt         # Dependencias y librerías del proyecto
-
+app/
+├── api/         # Endpoints REST (indira, personas, tickets, vigilancia)
+├── agent/       # Agente Indira (LLM, herramientas, memoria)
+├── core/        # Configuración, base de datos, seguridad
+├── ml_engine/   # Detección de casos, matching y scoring
+├── models/      # Tablas (SQLAlchemy)
+├── scraper/     # Google Noticias / RSS
+└── services/    # Casos, vigilancia y scheduler
 ```
-🛑 ALTO: Requisitos Previos
-Para ejecutar este motor en tu computadora, debes tener instalado:
 
-Python (v3.10 o superior): Asegúrate de marcar la casilla "Add Python to PATH" durante la instalación.
+---
 
-Visual Studio Code: El editor recomendado para trabajar con Python.
+## 🚀 Levantarlo (sin instalar Python ni Postgres)
 
-🛠️ Paso a paso para levantar el proyecto localmente
+**Necesitas únicamente:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) encendido y Git.
 
-Paso 1:
+```bash
+git clone https://github.com/jeliases-informaDev/Security-MachineLearning.git
+cd Security-MachineLearning
+docker compose up -d --build
+```
 
-Clonar el proyecto
-Abre tu terminal y descarga el código:
+La primera vez tarda ~1–2 minutos; después, segundos. Cuando `docker compose ps` muestre `ml` como **healthy**, abre http://localhost:8000/docs. Las tablas se crean solas.
 
-Bash
-git clone <URL_DEL_REPO_AQUI>
-cd security-machine-learning
+| Quiero… | Comando |
+|---|---|
+| Ver logs | `docker compose logs -f ml` |
+| Apagar (los datos se conservan) | `docker compose down` |
+| Empezar de cero (borra la base local) | `docker compose down -v` |
+| Aplicar cambios de código | `docker compose up -d --build ml` |
 
-Paso 2:
+> Tu base de datos es **local y propia**: lo que hagas no afecta a nadie del equipo. La clave interna por defecto es la misma que usa Security-Backend, así que se conectan solos.
 
-Crear y Activar el Entorno Virtual (venv)
-Para evitar conflictos con otras instalaciones de Python en tu PC, usaremos un entorno virtual.
-En la terminal (preferiblemente PowerShell si usas Windows), ejecuta:
+## 🗄️ Ver la base de datos y hacer consultas
 
-En Windows:
+Todo está explicado en **[docs/BASE-DE-DATOS.md](docs/BASE-DE-DATOS.md)** (qué base es, cómo conectarte con pgAdmin, mapa de tablas, cómo cargar los políticos) y las consultas listas para ejecutar están en **[docs/consultas.sql](docs/consultas.sql)**.
 
-PowerShell
+## 🧠 Indira (Ollama) — opcional
+
+Indira necesita un modelo local: `llama3.1:8b` (4.9 GB de descarga y ~8 GB de RAM libres). **Sin Ollama todo lo demás funciona**; solo Indira responde "no disponible".
+
+| Situación | Qué hacer |
+|---|---|
+| Ya tengo Ollama instalado en mi PC | Nada: el ML lo usa solo. Descarga el modelo una vez: `ollama pull llama3.1:8b` |
+| No lo tengo y quiero Indira | `docker compose --profile ia up -d --build` (corre Ollama en Docker y descarga el modelo en segundo plano: `docker compose logs -f ollama-pull`) |
+| Mi equipo no tiene RAM para el modelo | Pon `INDIRA_ENABLED=false` en `.env` y ejecuta `docker compose up -d` |
+
+## 🛠️ Programar el ML (con recarga rápida)
+
+Requisitos: **Python 3.12** y la base Postgres de Docker.
+
+```bash
+docker compose up -d postgres          # solo la base de datos
+
 python -m venv venv
-.\venv\Scripts\Activate.ps1
-(Nota: Si PowerShell te bloquea el script, ejecuta primero Set-ExecutionPolicy Unrestricted -Scope CurrentUser).
-
-En Mac / Linux:
-
-Bash
-python3 -m venv venv
-source venv/bin/activate
-✅ Sabrás que funcionó si ves un (venv) al inicio de tu línea de comandos. Nunca pases al siguiente paso sin ver ese (venv).
-
-
-Paso 3:
-
-Instalar las dependencias
-Con el entorno virtual activado, instala las librerías matemáticas y de servidor:
-
-Bash
-python -m ensurepip --upgrade
-python -m pip install -r requirements.txt
-
-Paso 4: 
-
-Levantar el servidor de FastAPI
-Arranca el proyecto con este comando:
-
-Bash
+.\venv\Scripts\Activate.ps1            # Mac/Linux: source venv/bin/activate
+pip install -r requirements.txt
+copy .env.example .env                 # Mac/Linux: cp
+alembic upgrade head                   # crea las tablas (la primera vez y al traer migraciones nuevas)
 python -m uvicorn main:app --reload
-✅ ¿Cómo probar la API?
-A diferencia de otros lenguajes, FastAPI genera su propia documentación interactiva.
-Abre tu navegador web y entra a http://localhost:8000/docs.
-Verás la interfaz de Swagger UI donde podrás probar los endpoints de Machine Learning sin necesidad de Postman.
+```
 
- Flujo de Trabajo para el Equipo (Git Flow)
-Nunca trabajes directamente en la rama main.
+Si PowerShell bloquea el script del venv: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
-Actualiza tu entorno local: git pull origin main.
+Pruebas: `python -m unittest discover -s tests` (las pruebas y los scripts de vigilancia llegan con la rama `feature/vigilancia-prensa`)
 
-Crea una rama para tu tarea: git checkout -b feature/scraper-pep.
+## ⚙️ Configuración (todo opcional)
 
-Haz tus cambios y súbelos:
+Los valores por defecto funcionan. Para cambiarlos copia `.env.example` como `.env` (no se sube a git).
 
-Bash
-git add .
-git commit -m "feat: agrega araña básica para extraer listas de sanciones"
-git push origin feature/scraper-pep
+| Variable | Para qué | Por defecto |
+|---|---|---|
+| `ML_PORT`, `POSTGRES_PORT` | Puertos en tu PC si están ocupados | `8000`, `5434` |
+| `DATABASE_URL` | Postgres (al correr con uvicorn) | `…@localhost:5434/security_ml` |
+| `INTERNAL_API_KEY` | Clave que debe mandar el backend (`X-Internal-Key`) | `dev-internal-key-change-me` |
+| `ENTORNO` | `dev` abre `/indira-chat` y no exige clave si está vacía | `dev` |
+| `INDIRA_ENABLED` | `false` apaga a Indira (responde 503) | `true` |
+| `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | Modelo de Indira (al correr con uvicorn) | `http://localhost:11434`, `llama3.1:8b` |
+| `SCRAPING_AL_ARRANCAR` | Corre la vigilancia de prensa al encender (consume mucha CPU/RAM) | `false` |
+
+## 🔧 Problemas comunes
+
+| Síntoma | Solución |
+|---|---|
+| Puerto ocupado | Cambia `ML_PORT` o `POSTGRES_PORT` en `.env` y vuelve a `docker compose up -d`. |
+| Indira responde error | Falta Ollama o el modelo: mira la sección de Indira. El resto del ML no se afecta. |
+| `Cannot connect to the Docker daemon` | Abre Docker Desktop y espera a que diga *Engine running*. |
+| 401 al probar en `/docs` | Las rutas piden el header `X-Internal-Key` (`dev-internal-key-change-me`). |
+
+## 🤝 Flujo de trabajo del equipo (Git Flow)
+Nunca trabajes directo en `main`: `git checkout -b feature/mi-tarea`, commits, `git push origin feature/mi-tarea` y abre un Pull Request.
