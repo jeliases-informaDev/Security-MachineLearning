@@ -10,9 +10,41 @@ from app.models.caso import Caso
 from app.models.enums import EstadoRevision
 from app.models.persona import Persona
 from app.schemas.caso import CasoOut
-from app.schemas.persona import PersonaConCasosOut, PersonaOut
+from app.schemas.persona import PersonaConCasosOut, PersonaListadoOut, PersonaOut
 
 router = APIRouter(prefix="/api/v1/personas", tags=["personas"])
+
+
+@router.get("", response_model=list[PersonaListadoOut])
+def listar_personas(
+    limite: int = Query(100, ge=1, le=1000, description="Maximo de personas a devolver"),
+    es_pep: bool | None = Query(None, description="Filtra por persona expuesta politicamente"),
+    con_casos: bool = Query(False, description="Incluye los casos no descartados de cada persona"),
+    db: Session = Depends(get_db),
+):
+    """Lista las personas vigiladas (ordenadas por apellido). Lo usa la carga de Listas Negativas del backend."""
+    consulta = select(Persona).order_by(Persona.apellidos, Persona.nombres).limit(limite)
+    if es_pep is not None:
+        consulta = consulta.where(Persona.es_pep.is_(es_pep))
+    personas = db.scalars(consulta).all()
+
+    casos_por_persona: dict[uuid.UUID, list[Caso]] = {}
+    if con_casos and personas:
+        casos = db.scalars(
+            select(Caso)
+            .where(Caso.persona_id.in_([p.id for p in personas]), Caso.estado_revision != EstadoRevision.DESCARTADO)
+            .order_by(Caso.creado_en.desc())
+        ).all()
+        for caso in casos:
+            casos_por_persona.setdefault(caso.persona_id, []).append(caso)
+
+    return [
+        PersonaListadoOut(
+            **PersonaOut.model_validate(p).model_dump(),
+            casos=[CasoOut.model_validate(c) for c in casos_por_persona.get(p.id, [])],
+        )
+        for p in personas
+    ]
 
 
 @router.get("/buscar", response_model=PersonaConCasosOut)
