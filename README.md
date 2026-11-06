@@ -3,7 +3,7 @@
 Microservicio de **IA y extracción de datos** del ecosistema Security, hecho con **Python y FastAPI**. Hace tres cosas:
 
 - **Personas y casos en prensa**: vigilancia diaria de diarios nacionales (Google Noticias) y clasificación con un modelo local.
-- **Indira**: agente IA (Ollama + `llama3.1:8b`) con tickets, memoria y feedback.
+- **Indira**: agente IA (Ollama + `llama3.1:8b`) con tickets y feedback.
 - **Scoring de riesgo** de personas.
 
 Lo consume **solo** el backend Kotlin (repositorio Security-Backend), con la clave interna `X-Internal-Key`. Detalle del diseño: [docs/ARQUITECTURA.md](docs/ARQUITECTURA.md).
@@ -14,7 +14,7 @@ Lo consume **solo** el backend Kotlin (repositorio Security-Backend), con la cla
 ```text
 app/
 ├── api/         # Endpoints REST (indira, personas, tickets, vigilancia)
-├── agent/       # Agente Indira (LLM, herramientas, memoria)
+├── agent/       # Agente Indira (LLM, herramientas)
 ├── core/        # Configuración, base de datos, seguridad
 ├── ml_engine/   # Detección de casos, matching y scoring
 ├── models/      # Tablas (SQLAlchemy)
@@ -76,7 +76,7 @@ python -m uvicorn main:app --reload
 
 Si PowerShell bloquea el script del venv: `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`.
 
-Pruebas: `python -m unittest discover -s tests`
+Pruebas: `pip install -r requirements-dev.txt` y `python -m pytest tests`
 
 ## ⚙️ Configuración (todo opcional)
 
@@ -90,6 +90,9 @@ Los valores por defecto funcionan. Para cambiarlos copia `.env.example` como `.e
 | `ENTORNO` | `dev` abre `/indira-chat` y no exige clave si está vacía | `dev` |
 | `INDIRA_ENABLED` | `false` apaga a Indira (responde 503) | `true` |
 | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` | Modelo de Indira (al correr con uvicorn) | `http://localhost:11434`, `llama3.1:8b` |
+| `OLLAMA_NUM_CTX` | Contexto del modelo, igual en el chat y la vigilancia | `4096` |
+| `OLLAMA_TIMEOUT_SEGUNDOS` | Plazo de un turno de Indira; al vencer responde 503. Menor que `ML_CHATTIMEOUTSECONDS` del backend | `280` |
+| `INDIRA_VENTANA_HISTORIAL` | Mensajes de la conversacion que recibe el modelo | `12` |
 | `SCRAPING_AL_ARRANCAR` | Corre la vigilancia de prensa al encender (consume mucha CPU/RAM) | `false` |
 
 ## 🔧 Problemas comunes

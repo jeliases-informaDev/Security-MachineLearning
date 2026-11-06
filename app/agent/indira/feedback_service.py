@@ -1,48 +1,24 @@
 import uuid
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models.enums import FeedbackMensaje, RolMensaje
-from app.models.indira import EjemploVerificado, MensajeIndira
+from app.models.enums import FeedbackMensaje
+from app.models.indira import MensajeIndira
 
 
-def _mensaje_usuario_anterior(db: Session, mensaje: MensajeIndira) -> MensajeIndira | None:
-    return db.scalar(
-        select(MensajeIndira)
-        .where(
-            MensajeIndira.conversacion_id == mensaje.conversacion_id,
-            MensajeIndira.rol == RolMensaje.USER,
-            MensajeIndira.creado_en < mensaje.creado_en,
-        )
-        .order_by(MensajeIndira.creado_en.desc())
-    )
+def registrar_feedback(
+    db: Session, mensaje_id: uuid.UUID, feedback: FeedbackMensaje, usuario_id: uuid.UUID | None = None
+) -> MensajeIndira:
+    """Guarda la marca en el mensaje. Ya no crea ejemplos: esa tabla no tiene empresa y mezclaba a los clientes.
 
-
-def registrar_feedback(db: Session, mensaje_id: uuid.UUID, feedback: FeedbackMensaje) -> MensajeIndira:
+    `usuario_id` es opcional mientras haya un backend que no lo envia. Si llega y no es el dueno,
+    responde igual que un mensaje inexistente.
+    """
     mensaje = db.get(MensajeIndira, mensaje_id)
-    if mensaje is None:
+    if mensaje is None or (usuario_id is not None and mensaje.conversacion.usuario_id != usuario_id):
         raise ValueError(f"Mensaje no encontrado: {mensaje_id}")
 
     mensaje.feedback = feedback
-
-    ejemplo_existente = db.scalar(
-        select(EjemploVerificado).where(EjemploVerificado.mensaje_origen_id == mensaje_id)
-    )
-
-    if feedback == FeedbackMensaje.POSITIVO and ejemplo_existente is None:
-        pregunta = _mensaje_usuario_anterior(db, mensaje)
-        if pregunta is not None:
-            db.add(
-                EjemploVerificado(
-                    mensaje_origen_id=mensaje.id,
-                    pregunta_usuario=pregunta.contenido,
-                    respuesta_indira=mensaje.contenido,
-                )
-            )
-    elif feedback == FeedbackMensaje.NEGATIVO and ejemplo_existente is not None:
-        db.delete(ejemplo_existente)
-
     db.commit()
     db.refresh(mensaje)
     return mensaje

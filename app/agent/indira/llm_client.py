@@ -1,3 +1,4 @@
+import httpx
 import ollama
 
 from app.core.config import settings
@@ -21,13 +22,22 @@ PROMPT_SISTEMA = (
 )
 
 
-def generar_respuesta(mensajes: list[dict], herramientas: list[dict] | None = None) -> ollama.Message:
-    cliente = ollama.Client(host=settings.OLLAMA_BASE_URL)
-    respuesta = cliente.chat(
-        model=settings.OLLAMA_MODEL,
-        messages=mensajes,
-        tools=herramientas,
-        # Temperatura baja: mas determinismo, mas confiabilidad al usar herramientas.
-        options={"temperature": 0.2},
-    )
+class ModeloNoDisponible(Exception):
+    """Ollama no respondio a tiempo o no esta disponible."""
+
+
+def generar_respuesta(
+    mensajes: list[dict], herramientas: list[dict] | None = None, timeout: float | None = None
+) -> ollama.Message:
+    cliente = ollama.Client(host=settings.OLLAMA_BASE_URL, timeout=timeout or settings.OLLAMA_TIMEOUT_SEGUNDOS)
+    try:
+        respuesta = cliente.chat(
+            model=settings.OLLAMA_MODEL,
+            messages=mensajes,
+            tools=herramientas,
+            # Temperatura baja: mas determinismo, mas confiabilidad al usar herramientas.
+            options={"temperature": 0.2, "num_ctx": settings.OLLAMA_NUM_CTX},
+        )
+    except (httpx.HTTPError, ollama.ResponseError, ConnectionError) as exc:
+        raise ModeloNoDisponible(str(exc)) from exc
     return respuesta.message

@@ -179,7 +179,8 @@ def detectar_caso_en_texto(
                 {"role": "user", "content": f"Persona: {nombre_completo}\nTitulo: {titulo}\nResumen: {texto}"},
             ],
             format="json",
-            options={"temperature": 0},
+            # Mismo num_ctx que el chat: con otro valor Ollama recargaria el modelo al alternar.
+            options={"temperature": 0, "num_ctx": settings.OLLAMA_NUM_CTX},
         )
     except Exception as exc:
         # El motor local puede no estar disponible (Ollama caido, modelo no descargado, etc.);
