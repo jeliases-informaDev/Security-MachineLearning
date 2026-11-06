@@ -33,3 +33,9 @@ class PersonaOut(PersonaBase):
 class PersonaConCasosOut(BaseModel):
     persona: PersonaOut | None
     casos: list[CasoOut]
+
+
+class PersonaListadoOut(PersonaOut):
+    """Persona para listados; `casos` solo viene cargado cuando se pide con_casos=true."""
+
+    casos: list[CasoOut] = []
