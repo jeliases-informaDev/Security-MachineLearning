@@ -31,6 +31,13 @@ class Settings(BaseSettings):
     # Modelo local autohospedado para el agente Indira (ver docs/ARQUITECTURA.md)
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_MODEL: str = "llama3.1:8b"
+    # Contexto del modelo. El chat y la vigilancia usan el mismo para que Ollama no recargue el modelo al alternar.
+    OLLAMA_NUM_CTX: int = 4096
+    # Plazo de un turno completo de Indira, con todas sus pasadas por herramientas. Debe ser menor que
+    # ML_CHATTIMEOUTSECONDS del backend (300 en produccion), para responder 503 antes de que el backend se corte.
+    OLLAMA_TIMEOUT_SEGUNDOS: int = 280
+    # Cuantos mensajes de la conversacion recibe el modelo, contando el actual.
+    INDIRA_VENTANA_HISTORIAL: int = 12
 
     @property
     def allowed_origins_list(self) -> list[str]:

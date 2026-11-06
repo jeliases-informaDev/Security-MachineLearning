@@ -47,9 +47,9 @@ class MensajeIndira(Base):
 
 
 class EjemploVerificado(Base):
-    """Pares pregunta/respuesta que un usuario marco como utiles (feedback positivo).
-    Sirven de memoria: se recuperan por similitud y se inyectan como ejemplos en
-    conversaciones futuras, sin necesidad de reentrenar el modelo."""
+    """Pares pregunta/respuesta de cuando el feedback positivo alimentaba la memoria.
+    Fuera de uso: no tiene empresa y mezclaba a los clientes, asi que nada la lee ni la escribe.
+    Se conserva hasta decidir que hacer con las filas que ya tiene."""
 
     __tablename__ = "ejemplos_verificados"
 

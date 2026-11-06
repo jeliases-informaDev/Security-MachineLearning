@@ -69,7 +69,7 @@ Valores que verás (se guardan en **MAYÚSCULAS**):
 | Tabla | Qué guarda |
 |---|---|
 | `conversaciones_indira` / `mensajes_indira` | Historial del chat (`rol`: user / assistant / tool; `feedback`: positivo / negativo). |
-| `ejemplos_verificados` | Pares pregunta–respuesta que recibieron feedback **positivo** (si luego se marca negativo, se borra). Sirven para mejorar a Indira. |
+| `ejemplos_verificados` | **Fuera de uso:** nada la lee ni la escribe, porque no tiene empresa y mezclaba a los clientes. Conserva las filas antiguas hasta decidir qué hacer con ellas. |
 | `reportes_generados` | Reportes que Indira generó (PDF, XLSX o JSON). |
 | `tickets` / `mensajes_ticket` | Tickets de soporte (propios del ecosistema) y su hilo de mensajes. |
 
